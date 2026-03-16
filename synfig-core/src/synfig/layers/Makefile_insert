@@ -17,6 +17,7 @@ LAYERS_HH = \
 	layers/layer_sound.h \
 	layers/layer_skeleton.h \
 	layers/layer_skeletondeformation.h \
+	layers/layer_freeformdeform.h \
 	layers/layer_switch.h
 
 LAYERS_CC = \
@@ -38,6 +39,7 @@ LAYERS_CC = \
 	layers/layer_sound.cpp \
 	layers/layer_skeleton.cpp \
 	layers/layer_skeletondeformation.cpp \
+	layers/layer_freeformdeform.cpp \
 	layers/layer_switch.cpp
 
 libsynfig_include_HH += \
