@@ -62,8 +62,6 @@ private:
 	//! Parameter: (Integer)
 	synfig::ValueBase param_mesh_rows;
 
-	struct GridPoint;
-
 	void reinit_control_points();
 
 public:
@@ -80,10 +78,8 @@ public:
 	virtual Vocab     get_param_vocab()const;
 
 	void prepare_mesh();
-	void prepare_mask();
 
 protected:
-    virtual Color get_color(Context context, const Point &pos) const;
     virtual rendering::Task::Handle build_composite_fork_task_vfunc(ContextParams context_params, rendering::Task::Handle sub_task) const;
 	virtual rendering::Task::Handle build_rendering_task_vfunc(Context context) const;
 }; // END of class Layer_FreeFormDeform

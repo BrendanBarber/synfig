@@ -47,7 +47,15 @@
 
 #endif
 
+/* === U S I N G =========================================================== */
+
 using namespace synfig;
+
+/* === M A C R O S ========================================================= */
+
+/* === C L A S S E S ======================================================= */
+
+/* === G L O B A L S ======================================================= */
 
 SYNFIG_LAYER_INIT(Layer_FreeFormDeform);
 SYNFIG_LAYER_SET_NAME(Layer_FreeFormDeform,"freeform_deform");
@@ -55,44 +63,29 @@ SYNFIG_LAYER_SET_LOCAL_NAME(Layer_FreeFormDeform,N_("Free Form Deform"));
 SYNFIG_LAYER_SET_CATEGORY(Layer_FreeFormDeform,N_("Distortions"));
 SYNFIG_LAYER_SET_VERSION(Layer_FreeFormDeform,"0.1");
 
+/* === M E T H O D S ======================================================= */
+
 static Real bernstein(int n, int k, Real t)
 {
+	// https://en.wikipedia.org/wiki/Bernstein_polynomial
+	
+	// Calculate binomial coefficient (n choose k)
 	Real binom = 1.0;
 	for (int i = 0; i < k; ++i) 
         binom *= (Real)(n - i) / (Real)(i + 1);
 
+	// Calculat t^k
 	Real tk = 1.0;
 	for (int i = 0; i < k; ++i) 
         tk  *= t;
 
+	// Calculate (1-t)^(n-k)
 	Real t1k = 1.0;
 	for (int i = 0; i < n - k; ++i) 
         t1k *= (1.0 - t);
 
 	return binom * tk * t1k;
 }
-
-struct Layer_FreeFormDeform::GridPoint {
-	Vector initial_position;
-	Vector deformed_position;
-	bool used;
-
-	inline GridPoint():
-		used(false) { }
-	inline explicit GridPoint(const Vector &initial_position):
-		initial_position(initial_position), deformed_position(initial_position), used(false) { }
-
-	static bool compare_triangles(
-		const std::pair<Real, rendering::Mesh::Triangle> &a,
-		const std::pair<Real, rendering::Mesh::Triangle> &b)
-	{
-		return a.second.vertices[0] < b.second.vertices[0] ? true
-			 : b.second.vertices[0] < a.second.vertices[0] ? false
-			 : a.second.vertices[1] < b.second.vertices[1] ? true
-			 : b.second.vertices[1] < a.second.vertices[1] ? false
-			 : a.second.vertices[2] < b.second.vertices[2];
-	}
-};
 
 Layer_FreeFormDeform::Layer_FreeFormDeform():
 	Layer_MeshTransform(1.0, Color::BLEND_STRAIGHT),
@@ -243,6 +236,7 @@ Layer_FreeFormDeform::prepare_mesh()
 
 	std::vector<Point> cp = extract_control_points(param_control_points);
 
+	// If the number of control points does not equal lattice size, re-init them to the default positions
 	if ((int)cp.size() != lc * lr) {
 		reinit_control_points();
 		cp = extract_control_points(param_control_points);
@@ -256,6 +250,7 @@ Layer_FreeFormDeform::prepare_mesh()
 	{
 		for (int i = 0; i < mc; ++i)
 		{
+			// Calculate the position of the vertex (i,j) using the Bernstein polynomials
 			Point rest(p0[0] + i*step_x, p0[1] + j*step_y);
 			Real s = (Real)i / (Real)(mc - 1);
 			Real t = 1.0 - (Real)j / (Real)(mr - 1);
@@ -272,6 +267,7 @@ Layer_FreeFormDeform::prepare_mesh()
 		}
 	}
 
+	// Build two triangles for each quad in the grid
 	for (int j = 1; j < mr; ++j)
 	{
 		for (int i = 1; i < mc; ++i)
@@ -288,17 +284,10 @@ Layer_FreeFormDeform::prepare_mesh()
 	}
 
 	this->mesh = mesh;
-
-	prepare_mask();
 }
 
-Color Layer_FreeFormDeform::get_color(Context context, const Point &pos) const
-{
-    Vector v;
-    if (get_amount() > 0.1 && mesh->transform_coord_world_to_texture(pos, v))
-        return Color::blend(context.get_color(v), context.get_color(pos), get_amount(), get_blend_method());
-    return context.get_color(pos);
-}
+// These 2 methods are implemented to prevent the default behavior of blending, 
+// which for this layer results in drawing the deformed and undeformed version on top of each other
 
 rendering::Task::Handle
 Layer_FreeFormDeform::build_composite_fork_task_vfunc(ContextParams context_params, rendering::Task::Handle sub_task) const
@@ -317,12 +306,4 @@ Layer_FreeFormDeform::build_rendering_task_vfunc(Context context) const
 {
     rendering::Task::Handle sub_task = context.build_rendering_task();
     return build_composite_fork_task_vfunc(context.get_params(), sub_task);
-}
-
-void Layer_FreeFormDeform::prepare_mask()
-{
-    rendering::Contour::Handle mask(new rendering::Contour());
-    mask->antialias = true;
-    mask->invert = true;
-    this->mask = mask;
 }
